@@ -17,9 +17,11 @@ Play, next, previous logic ├── README.md # Documentation
 
 HOW TO RUN Terminal: python main.py
 
-VS Code: 1. Open folder 2. Open main.py 3. Run
+VS Code: 
+1. Open folder 
+2. Open main.py 
+3. Run
 
-TEAM MEMBERS & ROLES Member 1 - Playlist Manager Member 2 - Search
-System Member 3 - Player Controls Member 4 - Documentation & Testing
+
 
 NOTES - Works fully offline - No HTML - Can use CLI or WxPython GUI
