@@ -1,4 +1,4 @@
-Music Playlist Manager (Python Project)
+hi Music Playlist Manager (Python Project)
 
 This project is a simple Python-based music playlist manager that allows
 users to create and manage their own playlist. Users can add songs,
@@ -24,4 +24,7 @@ VS Code:
 
 
 
-NOTES - Works fully offline - No HTML - Can use CLI or WxPython GUI
+NOTES:
+- Works fully offline 
+- No HTML 
+- Can use CLI or WxPython GUI
