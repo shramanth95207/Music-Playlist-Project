@@ -22,4 +22,4 @@ VS Code: 1. Open folder 2. Open main.py 3. Run
 NOTES - Works fully offline - No HTML - Can use CLI or WxPython GUI
 
 
-SCREENSHOTS: 
+SCREENSHOTS (glimpse of the project): 
