@@ -1,4 +1,4 @@
-hi Music Playlist Manager (Python Project)
+Music Playlist Manager (Python Project)
 
 This project is a simple Python-based music playlist manager that allows
 users to create and manage their own playlist. Users can add songs,
