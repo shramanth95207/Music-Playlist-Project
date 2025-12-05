@@ -5,7 +5,7 @@ import os
 
 class MusicPlayer(wx.Frame):
     def __init__(self):
-        super().__init__(None, title="Music Player", size=(600, 400))
+        super().__init__(None, title="Music Player", size=(700, 420))
         panel = wx.Panel(self)
 
         # --- Data ---
@@ -30,7 +30,7 @@ class MusicPlayer(wx.Frame):
 
         # --- Volume slider ---
         self.vol_slider = wx.Slider(
-            panel, value=50, minValue=0, maxValue=100, style=wx.SL_HORIZONTAL
+            panel, value=70, minValue=0, maxValue=100, style=wx.SL_HORIZONTAL
         )
         vol_label = wx.StaticText(panel, label="Volume")
 
@@ -38,6 +38,8 @@ class MusicPlayer(wx.Frame):
         self.pos_slider = wx.Slider(
             panel, value=0, minValue=0, maxValue=100, style=wx.SL_HORIZONTAL
         )
+        # time label (current / total)
+        self.time_label = wx.StaticText(panel, label="00:00 / 00:00")
 
         # --- Layout ---
         main_sizer = wx.BoxSizer(wx.HORIZONTAL)
@@ -60,11 +62,10 @@ class MusicPlayer(wx.Frame):
         vol_sizer.Add(vol_label, 0, wx.ALIGN_CENTER_VERTICAL | wx.RIGHT, 5)
         vol_sizer.Add(self.vol_slider, 1, wx.EXPAND)
 
-        # right side: media, position slider, buttons, volume
+        # right side: media, position slider, time label, buttons, volume
         right_sizer.Add(self.mc, 0, wx.EXPAND | wx.ALL, 5)
-        right_sizer.Add(
-            self.pos_slider, 0, wx.EXPAND | wx.LEFT | wx.RIGHT | wx.BOTTOM, 5
-        )
+        right_sizer.Add(self.pos_slider, 0, wx.EXPAND | wx.LEFT | wx.RIGHT | wx.BOTTOM, 5)
+        right_sizer.Add(self.time_label, 0, wx.ALIGN_CENTER | wx.ALL, 5)
         right_sizer.Add(btn_sizer, 0, wx.CENTER)
         right_sizer.Add(vol_sizer, 0, wx.EXPAND | wx.ALL, 5)
 
@@ -94,6 +95,9 @@ class MusicPlayer(wx.Frame):
         # initial empty display
         self.update_playlist_display()
 
+        # set initial volume
+        self.mc.SetVolume(self.vol_slider.GetValue() / 100)
+
         self.Show()
 
     # -------------- helpers -----------------
@@ -113,32 +117,35 @@ class MusicPlayer(wx.Frame):
     def load_track(self, index):
         if index < 0 or index >= len(self.tracks):
             return
-        
+
         # Stop current playback and timer first
-        self.mc.Stop()
+        try:
+            self.mc.Stop()
+        except Exception:
+            pass
         self.timer.Stop()
-        
+
         path = self.tracks[index]
         if self.mc.Load(path):
             self.current_index = index
-            
+
             # Wait briefly for Length() to be available, then set up slider
             def setup_slider():
                 length = self.mc.Length()
-                if length > 0:
+                if length and length > 0:
                     self.pos_slider.SetRange(0, length)
-                    self.pos_slider.SetValue(0)  # ✅ RESET TO ZERO
+                    self.pos_slider.SetValue(0)
+                    # update time label to show 0 / total
+                    self.time_label.SetLabel(f"{self.ms_to_time(0)} / {self.ms_to_time(length)}")
                     self.mc.Play()
-                    self.timer.Start(200)
+                    self.timer.Start(250)
                 else:
-                    # Retry if length not ready yet
+                    # Retry if length not ready yet (short delay)
                     wx.CallLater(100, setup_slider)
-            
+
             setup_slider()
         else:
-            wx.MessageBox(
-                f"Unable to load {path}", "Error", wx.OK | wx.ICON_ERROR
-            )
+            wx.MessageBox(f"Unable to load {path}", "Error", wx.OK | wx.ICON_ERROR)
 
     # -------------- events -------------------
 
@@ -146,7 +153,7 @@ class MusicPlayer(wx.Frame):
         dlg = wx.FileDialog(
             self,
             message="Choose audio files",
-            wildcard="Audio files (*.mp3;*.wav;*.ogg)|*.mp3;*.wav;*.ogg|All files (*.*)|*.*",
+            wildcard="Audio files (*.mp3;*.wav;*.ogg;*.flac)|*.mp3;*.wav;*.ogg;*.flac|All files (*.*)|*.*",
             style=wx.FD_OPEN | wx.FD_FILE_MUST_EXIST | wx.FD_MULTIPLE,
         )
         if dlg.ShowModal() == wx.ID_OK:
@@ -186,7 +193,7 @@ class MusicPlayer(wx.Frame):
     def on_play_pause(self, event):
         if self.mc.GetState() != wx.media.MEDIASTATE_PLAYING:
             self.mc.Play()
-            self.timer.Start(200)
+            self.timer.Start(250)
         else:
             self.mc.Pause()
             self.timer.Stop()
@@ -205,17 +212,22 @@ class MusicPlayer(wx.Frame):
 
     def on_volume_change(self, event):
         volume = self.vol_slider.GetValue() / 100
-        self.mc.SetVolume(volume)
+        try:
+            self.mc.SetVolume(volume)
+        except Exception:
+            pass
 
     def on_seek(self, event):
         length = self.mc.Length()
         if length > 0:
             pos = self.pos_slider.GetValue()
-            if pos < 0:
-                pos = 0
-            elif pos > length:
-                pos = length
-            self.mc.Seek(pos)
+            pos = max(0, min(pos, length))
+            try:
+                self.mc.Seek(pos)
+            except Exception:
+                pass
+            # update displayed time immediately after seeking
+            self.time_label.SetLabel(f"{self.ms_to_time(pos)} / {self.ms_to_time(length)}")
 
     def on_timer(self, event):
         if self.mc.GetState() == wx.media.MEDIASTATE_PLAYING:
@@ -226,14 +238,30 @@ class MusicPlayer(wx.Frame):
                     pos = 0
                 elif pos > length:
                     pos = length
+                # update slider and time label
                 self.pos_slider.SetRange(0, length)
+                # avoid moving slider while user is dragging? simple approach: always set
                 self.pos_slider.SetValue(pos)
-                
-                # Auto-next when song ends
+                self.time_label.SetLabel(f"{self.ms_to_time(pos)} / {self.ms_to_time(length)}")
+
+                # Auto-next when song ends (within 500 ms)
                 if pos >= length - 500 and self.current_index is not None:
                     self.on_next(None)
         else:
             self.timer.Stop()
+
+    def ms_to_time(self, ms):
+        """Convert milliseconds to MM:SS"""
+        try:
+            ms = int(ms)
+            if ms <= 0:
+                return "00:00"
+            s = ms // 1000
+            m = s // 60
+            s = s % 60
+            return f"{m:02d}:{s:02d}"
+        except Exception:
+            return "00:00"
 
     # --------- search handlers ----------
 
