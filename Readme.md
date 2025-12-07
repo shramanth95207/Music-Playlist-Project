@@ -17,9 +17,9 @@ Play, next, previous logic ├── README.md # Documentation
 
 HOW TO RUN Terminal: python main.py
 
-VS Code: 
+VS Code:
 1. Open folder 
-2. Open main.py 
+2. Open the code file ((file_name).py)
 3. Run
 
 
