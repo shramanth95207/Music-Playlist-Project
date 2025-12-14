@@ -8,7 +8,7 @@ class MusicPlayer(wx.Frame):
         # Create main window with black background theme
         super().__init__(None, title="Music Player", size=(900, 600))
         self.SetBackgroundColour(wx.Colour(10, 10, 10))  # Very dark black background
-        
+
         panel = wx.Panel(self)
         panel.SetBackgroundColour(wx.Colour(10, 10, 10))  # Dark black background for panel
 
@@ -17,6 +17,9 @@ class MusicPlayer(wx.Frame):
         self.display_names = []
         self.current_index = -1
         self.is_dragging = False
+
+        # Flag to avoid handling slider events caused by programmatic updates
+        self.updating_slider = False
 
         # --- Search bar ---
         self.search_ctrl = wx.SearchCtrl(panel, style=wx.TE_PROCESS_ENTER)
@@ -44,54 +47,54 @@ class MusicPlayer(wx.Frame):
         display_panel = wx.Panel(panel)
         display_panel.SetBackgroundColour(wx.Colour(10, 10, 10))  # Match main background
         display_sizer = wx.BoxSizer(wx.VERTICAL)
-        
+
         # Create media control for video playback
         self.video_player = wx.media.MediaCtrl(
-            display_panel, 
+            display_panel,
             style=wx.SIMPLE_BORDER
         )
-        
+
         try:
             # Load MP4 video file (like animated GIF)
             video_path = r"e:\Python\Lib\py\animation.mp4"
-            
+
             if os.path.exists(video_path):
                 # Check if file exists
                 if self.video_player.Load(video_path):
                     # Successfully loaded video
                     # Remove controls (play/pause buttons, slider, etc.)
                     self.video_player.ShowPlayerControls(0)
-                    
+
                     # Start playing
                     self.video_player.Play()
-                    
+
                     # Create timer to loop the video
                     self.video_timer = wx.Timer(self, wx.ID_ANY)
                     self.Bind(wx.EVT_TIMER, self.on_video_timer, self.video_timer)
                     self.video_timer.Start(100)  # Check every 100ms
-                    
+
                 else:
                     # Video failed to load
                     error_text = wx.StaticText(display_panel, label="[VIDEO ERROR]")
                     error_text.SetForegroundColour(wx.Colour(255, 0, 0))  # Red for error
                     display_sizer.Add(error_text, 1, wx.ALIGN_CENTER | wx.ALL, 20)
-                    
+
             else:
                 # File doesn't exist
                 no_file_text = wx.StaticText(
-                    display_panel, 
+                    display_panel,
                     label=f"[FILE NOT FOUND]\n{video_path}"
                 )
                 no_file_text.SetForegroundColour(wx.Colour(255, 100, 0))  # Orange warning
                 display_sizer.Add(no_file_text, 1, wx.ALIGN_CENTER | wx.ALL, 20)
-                
+
         except Exception as e:
             # Catch any errors
             print(f"Error loading video: {e}")
             error_text = wx.StaticText(display_panel, label=f"[ERROR]\n{str(e)}")
             error_text.SetForegroundColour(wx.Colour(255, 0, 0))  # Red for error
             display_sizer.Add(error_text, 1, wx.ALIGN_CENTER | wx.ALL, 20)
-        
+
         # Add video player with expansion to fill all available space
         display_sizer.Add(self.video_player, 1, wx.EXPAND | wx.ALL, 0)
         display_panel.SetSizer(display_sizer)
@@ -197,6 +200,11 @@ class MusicPlayer(wx.Frame):
 
         self.playlist.Bind(wx.EVT_LISTBOX_DCLICK, self.on_playlist_dclick)
         self.vol_slider.Bind(wx.EVT_SLIDER, self.on_volume_change)
+
+        # For progress slider:
+        # - EVT_SLIDER will be used to seek when the user moves the slider
+        # - EVT_LEFT_DOWN / EVT_LEFT_UP change dragging state but MUST call event.Skip()
+        #   so the slider can still handle the mouse and move its thumb.
         self.pos_slider.Bind(wx.EVT_LEFT_DOWN, self.on_slider_down)
         self.pos_slider.Bind(wx.EVT_LEFT_UP, self.on_slider_up)
         self.pos_slider.Bind(wx.EVT_SLIDER, self.on_seek)
@@ -241,8 +249,14 @@ class MusicPlayer(wx.Frame):
             def setup_slider():
                 length = self.mc.Length()
                 if length and length > 0:
-                    self.pos_slider.SetRange(0, length)
-                    self.pos_slider.SetValue(0)
+                    # protect against generating slider events we should ignore
+                    self.updating_slider = True
+                    try:
+                        self.pos_slider.SetRange(0, length)
+                        self.pos_slider.SetValue(0)
+                    finally:
+                        self.updating_slider = False
+
                     self.time_label.SetLabel(f"{self.ms_to_time(0)} / {self.ms_to_time(length)}")
                     self.mc.Play()
                     self.timer.Start(250)
@@ -331,28 +345,65 @@ class MusicPlayer(wx.Frame):
             self.mc.SetVolume(volume)
         except Exception:
             pass
+        # allow default processing as well
+        event.Skip()
 
     def on_slider_down(self, event):
+        # When user presses the mouse on the slider, stop the regular update timer
         self.is_dragging = True
-        self.timer.Stop()
+        try:
+            self.timer.Stop()
+        except Exception:
+            pass
+        # MUST call Skip so the slider gets the mouse event and moves its thumb
+        event.Skip()
 
     def on_slider_up(self, event):
+        # User released the mouse; perform final seek and resume timer if playing
         self.is_dragging = False
+        try:
+            pos = self.pos_slider.GetValue()
+            if self.mc.Length() > 0:
+                try:
+                    self.mc.Seek(pos)
+                except Exception:
+                    pass
+                self.time_label.SetLabel(f"{self.ms_to_time(pos)} / {self.ms_to_time(self.mc.Length())}")
+        except Exception:
+            pass
+
         if self.mc.GetState() == wx.media.MEDIASTATE_PLAYING:
-            self.timer.Start(250)
+            try:
+                self.timer.Start(250)
+            except Exception:
+                pass
+
+        # Allow the slider to also process the left-up event
+        event.Skip()
 
     def on_seek(self, event):
-        if not self.is_dragging:
+        # Ignore events caused by programmatic updates
+        if self.updating_slider:
             return
+
+        # event.GetInt() provides the slider value for EVT_SLIDER
+        try:
+            pos = event.GetInt()
+        except Exception:
+            pos = self.pos_slider.GetValue()
+
         length = self.mc.Length()
         if length > 0:
-            pos = self.pos_slider.GetValue()
             pos = max(0, min(pos, length))
             try:
+                # Seek to position as the user drags/clicks
                 self.mc.Seek(pos)
             except Exception:
                 pass
             self.time_label.SetLabel(f"{self.ms_to_time(pos)} / {self.ms_to_time(length)}")
+
+        # let other handlers run if needed
+        event.Skip()
 
     def on_timer(self, event):
         if self.mc.GetState() == wx.media.MEDIASTATE_PLAYING:
@@ -364,14 +415,23 @@ class MusicPlayer(wx.Frame):
                 elif pos > length:
                     pos = length
                 if not self.is_dragging:
-                    self.pos_slider.SetRange(0, length)
-                    self.pos_slider.SetValue(pos)
+                    # protect against generating slider events we should ignore
+                    self.updating_slider = True
+                    try:
+                        self.pos_slider.SetRange(0, length)
+                        self.pos_slider.SetValue(pos)
+                    finally:
+                        self.updating_slider = False
                 self.time_label.SetLabel(f"{self.ms_to_time(pos)} / {self.ms_to_time(length)}")
 
+                # if near end, go to next
                 if pos >= length - 500 and self.current_index is not None:
                     self.on_next(None)
         else:
-            self.timer.Stop()
+            try:
+                self.timer.Stop()
+            except Exception:
+                pass
 
     def ms_to_time(self, ms):
         """Convert milliseconds to MM:SS"""
@@ -399,4 +459,3 @@ if __name__ == "__main__":
     app = wx.App(False)
     MusicPlayer()
     app.MainLoop()
-
