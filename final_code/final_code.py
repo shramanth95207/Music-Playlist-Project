@@ -5,12 +5,12 @@ import os
 
 class MusicPlayer(wx.Frame):
     def __init__(self):
-        # Create main window with black background theme
+       
         super().__init__(None, title="Music Player", size=(900, 600))
-        self.SetBackgroundColour(wx.Colour(10, 10, 10))  # Very dark black background
+        self.SetBackgroundColour(wx.Colour(10, 10, 10))  
 
         panel = wx.Panel(self)
-        panel.SetBackgroundColour(wx.Colour(10, 10, 10))  # Dark black background for panel
+        panel.SetBackgroundColour(wx.Colour(10, 10, 10))
 
         # --- Data ---
         self.tracks = []
@@ -18,18 +18,18 @@ class MusicPlayer(wx.Frame):
         self.current_index = -1
         self.is_dragging = False
 
-        # Flag to avoid handling slider events caused by programmatic updates
+       
         self.updating_slider = False
 
         # --- Search bar ---
         self.search_ctrl = wx.SearchCtrl(panel, style=wx.TE_PROCESS_ENTER)
-        self.search_ctrl.SetBackgroundColour(wx.Colour(20, 20, 20))  # Very dark gray
-        self.search_ctrl.SetForegroundColour(wx.Colour(0, 255, 100))  # Light green text
+        self.search_ctrl.SetBackgroundColour(wx.Colour(20, 20, 20))  
+        self.search_ctrl.SetForegroundColour(wx.Colour(0, 255, 100)) 
 
         # --- Playlist ---
         self.playlist = wx.ListBox(panel)
-        self.playlist.SetBackgroundColour(wx.Colour(15, 15, 15))  # Almost black
-        self.playlist.SetForegroundColour(wx.Colour(50, 255, 100))  # Bright light green
+        self.playlist.SetBackgroundColour(wx.Colour(15, 15, 15))  
+        self.playlist.SetForegroundColour(wx.Colour(50, 255, 100))  
 
         # --- Now Playing Label ---
         now_playing_label = wx.StaticText(panel, label=">> NOW PLAYING")
@@ -37,108 +37,107 @@ class MusicPlayer(wx.Frame):
         font_title.PointSize = 15
         font_title = font_title.Bold()
         now_playing_label.SetFont(font_title)
-        now_playing_label.SetForegroundColour(wx.Colour(0, 255, 100))  # Light green
+        now_playing_label.SetForegroundColour(wx.Colour(0, 255, 100))  
 
         self.now_playing = wx.StaticText(panel, label="No track loaded")
         self.now_playing.SetFont(font_title)
-        self.now_playing.SetForegroundColour(wx.Colour(100, 255, 150))  # Lighter green
+        self.now_playing.SetForegroundColour(wx.Colour(100, 255, 150))  
 
-        # --- Video Display Panel (MP4 GIF-like animation) ---
+       
         display_panel = wx.Panel(panel)
-        display_panel.SetBackgroundColour(wx.Colour(10, 10, 10))  # Match main background
+        display_panel.SetBackgroundColour(wx.Colour(10, 10, 10))  
         display_sizer = wx.BoxSizer(wx.VERTICAL)
 
-        # Create media control for video playback
+        
         self.video_player = wx.media.MediaCtrl(
             display_panel,
             style=wx.SIMPLE_BORDER
         )
 
         try:
-            # Load MP4 video file (like animated GIF)
+         
             video_path = r"e:\Python\Lib\py\animation.mp4"
 
             if os.path.exists(video_path):
-                # Check if file exists
+                
                 if self.video_player.Load(video_path):
-                    # Successfully loaded video
-                    # Remove controls (play/pause buttons, slider, etc.)
+                 
                     self.video_player.ShowPlayerControls(0)
 
-                    # Start playing
+               
                     self.video_player.Play()
 
-                    # Create timer to loop the video
+                    
                     self.video_timer = wx.Timer(self, wx.ID_ANY)
                     self.Bind(wx.EVT_TIMER, self.on_video_timer, self.video_timer)
-                    self.video_timer.Start(100)  # Check every 100ms
+                    self.video_timer.Start(100)  
 
                 else:
-                    # Video failed to load
+                  
                     error_text = wx.StaticText(display_panel, label="[VIDEO ERROR]")
-                    error_text.SetForegroundColour(wx.Colour(255, 0, 0))  # Red for error
+                    error_text.SetForegroundColour(wx.Colour(255, 0, 0))  
                     display_sizer.Add(error_text, 1, wx.ALIGN_CENTER | wx.ALL, 20)
 
             else:
-                # File doesn't exist
+                
                 no_file_text = wx.StaticText(
                     display_panel,
                     label=f"[FILE NOT FOUND]\n{video_path}"
                 )
-                no_file_text.SetForegroundColour(wx.Colour(255, 100, 0))  # Orange warning
+                no_file_text.SetForegroundColour(wx.Colour(255, 100, 0)) 
                 display_sizer.Add(no_file_text, 1, wx.ALIGN_CENTER | wx.ALL, 20)
 
         except Exception as e:
-            # Catch any errors
+          
             print(f"Error loading video: {e}")
             error_text = wx.StaticText(display_panel, label=f"[ERROR]\n{str(e)}")
-            error_text.SetForegroundColour(wx.Colour(255, 0, 0))  # Red for error
+            error_text.SetForegroundColour(wx.Colour(255, 0, 0))  
             display_sizer.Add(error_text, 1, wx.ALIGN_CENTER | wx.ALL, 20)
 
-        # Add video player with expansion to fill all available space
+        
         display_sizer.Add(self.video_player, 1, wx.EXPAND | wx.ALL, 0)
         display_panel.SetSizer(display_sizer)
 
-        # --- Media control for audio (hidden) ---
+      
         self.mc = wx.media.MediaCtrl(panel, style=wx.SIMPLE_BORDER)
         self.mc.Hide()
 
-        # --- Buttons ---
+        
         btn_load = wx.Button(panel, label="LOAD SONGS")
         btn_prev = wx.Button(panel, label="<< Prev")
         btn_play = wx.Button(panel, label="PLAY/PAUSE")
         btn_next = wx.Button(panel, label="NEXT >>")
 
-        # Style buttons with black and light green theme
+     
         for btn in [btn_load, btn_prev, btn_play, btn_next]:
-            btn.SetBackgroundColour(wx.Colour(0, 150, 75))  # Dark green
-            btn.SetForegroundColour(wx.WHITE)  # White text
+            btn.SetBackgroundColour(wx.Colour(0, 150, 75))  
+            btn.SetForegroundColour(wx.WHITE)  
             font = btn.GetFont()
             font.PointSize = 10
             btn.SetFont(font)
 
         # --- Volume slider ---
         vol_label = wx.StaticText(panel, label="VOLUME")
-        vol_label.SetForegroundColour(wx.Colour(0, 255, 100))  # Light green
+        vol_label.SetForegroundColour(wx.Colour(0, 255, 100)) 
         self.vol_slider = wx.Slider(
             panel, value=70, minValue=0, maxValue=100, style=wx.SL_HORIZONTAL
         )
-        self.vol_slider.SetBackgroundColour(wx.Colour(20, 20, 20))  # Dark gray
+        self.vol_slider.SetBackgroundColour(wx.Colour(20, 20, 20))  
 
         # --- Progress slider ---
         prog_label = wx.StaticText(panel, label="PROGRESS")
-        prog_label.SetForegroundColour(wx.Colour(0, 255, 100))  # Light green
+        prog_label.SetForegroundColour(wx.Colour(0, 255, 100))  
         self.pos_slider = wx.Slider(
             panel, value=0, minValue=0, maxValue=100, style=wx.SL_HORIZONTAL
         )
-        self.pos_slider.SetBackgroundColour(wx.Colour(20, 20, 20))  # Dark gray
+        self.pos_slider.SetBackgroundColour(wx.Colour(20, 20, 20))  
 
         # time label
         self.time_label = wx.StaticText(panel, label="00:00 / 00:00")
         font_time = self.time_label.GetFont()
         font_time.PointSize = 11
         self.time_label.SetFont(font_time)
-        self.time_label.SetForegroundColour(wx.Colour(50, 255, 150))  # Bright light green
+        self.time_label.SetForegroundColour(wx.Colour(50, 255, 150))
 
         # --- Layout ---
         main_sizer = wx.BoxSizer(wx.HORIZONTAL)
@@ -154,7 +153,7 @@ class MusicPlayer(wx.Frame):
         font_pl.PointSize = 12
         font_pl = font_pl.Bold()
         playlist_title.SetFont(font_pl)
-        playlist_title.SetForegroundColour(wx.Colour(0, 255, 100))  # Light green
+        playlist_title.SetForegroundColour(wx.Colour(0, 255, 100)) 
 
         left_sizer.Add(playlist_title, 0, wx.ALL, 8)
         left_sizer.Add(self.search_ctrl, 0, wx.EXPAND | wx.LEFT | wx.RIGHT | wx.BOTTOM, 8)
@@ -202,9 +201,7 @@ class MusicPlayer(wx.Frame):
         self.vol_slider.Bind(wx.EVT_SLIDER, self.on_volume_change)
 
         # For progress slider:
-        # - EVT_SLIDER will be used to seek when the user moves the slider
-        # - EVT_LEFT_DOWN / EVT_LEFT_UP change dragging state but MUST call event.Skip()
-        #   so the slider can still handle the mouse and move its thumb.
+        
         self.pos_slider.Bind(wx.EVT_LEFT_DOWN, self.on_slider_down)
         self.pos_slider.Bind(wx.EVT_LEFT_UP, self.on_slider_up)
         self.pos_slider.Bind(wx.EVT_SLIDER, self.on_seek)
@@ -249,7 +246,7 @@ class MusicPlayer(wx.Frame):
             def setup_slider():
                 length = self.mc.Length()
                 if length and length > 0:
-                    # protect against generating slider events we should ignore
+              
                     self.updating_slider = True
                     try:
                         self.pos_slider.SetRange(0, length)
@@ -270,11 +267,11 @@ class MusicPlayer(wx.Frame):
     def on_video_timer(self, event):
         """Loop video when it finishes - checks every 100ms"""
         try:
-            # Check if video has stopped (finished playing)
+          
             if self.video_player.GetState() == wx.media.MEDIASTATE_STOPPED:
-                # Seek to beginning (position 0)
+              
                 self.video_player.Seek(0)
-                # Start playing again
+                
                 self.video_player.Play()
         except Exception:
             pass
@@ -349,17 +346,17 @@ class MusicPlayer(wx.Frame):
         event.Skip()
 
     def on_slider_down(self, event):
-        # When user presses the mouse on the slider, stop the regular update timer
+
         self.is_dragging = True
         try:
             self.timer.Stop()
         except Exception:
             pass
-        # MUST call Skip so the slider gets the mouse event and moves its thumb
+        
         event.Skip()
 
     def on_slider_up(self, event):
-        # User released the mouse; perform final seek and resume timer if playing
+     
         self.is_dragging = False
         try:
             pos = self.pos_slider.GetValue()
@@ -378,15 +375,14 @@ class MusicPlayer(wx.Frame):
             except Exception:
                 pass
 
-        # Allow the slider to also process the left-up event
+     
         event.Skip()
 
     def on_seek(self, event):
-        # Ignore events caused by programmatic updates
+   
         if self.updating_slider:
             return
 
-        # event.GetInt() provides the slider value for EVT_SLIDER
         try:
             pos = event.GetInt()
         except Exception:
@@ -396,13 +392,13 @@ class MusicPlayer(wx.Frame):
         if length > 0:
             pos = max(0, min(pos, length))
             try:
-                # Seek to position as the user drags/clicks
+                
                 self.mc.Seek(pos)
             except Exception:
                 pass
             self.time_label.SetLabel(f"{self.ms_to_time(pos)} / {self.ms_to_time(length)}")
 
-        # let other handlers run if needed
+       
         event.Skip()
 
     def on_timer(self, event):
@@ -415,7 +411,7 @@ class MusicPlayer(wx.Frame):
                 elif pos > length:
                     pos = length
                 if not self.is_dragging:
-                    # protect against generating slider events we should ignore
+                   
                     self.updating_slider = True
                     try:
                         self.pos_slider.SetRange(0, length)
@@ -424,7 +420,7 @@ class MusicPlayer(wx.Frame):
                         self.updating_slider = False
                 self.time_label.SetLabel(f"{self.ms_to_time(pos)} / {self.ms_to_time(length)}")
 
-                # if near end, go to next
+              
                 if pos >= length - 500 and self.current_index is not None:
                     self.on_next(None)
         else:
@@ -459,3 +455,4 @@ if __name__ == "__main__":
     app = wx.App(False)
     MusicPlayer()
     app.MainLoop()
+
