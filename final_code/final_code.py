@@ -1,4 +1,3 @@
-
 import wx
 import wx.media
 import os
@@ -41,31 +40,63 @@ class MusicPlayer(wx.Frame):
         self.now_playing.SetFont(font_title)
         self.now_playing.SetForegroundColour(wx.Colour(100, 255, 150))  # Lighter green
 
-        # --- Large Music Icon Display ---
+        # --- Video Display Panel (MP4 GIF-like animation) ---
         display_panel = wx.Panel(panel)
-        display_panel.SetBackgroundColour(wx.Colour(20, 20, 20))  # Dark gray background
+        display_panel.SetBackgroundColour(wx.Colour(10, 10, 10))  # Match main background
         display_sizer = wx.BoxSizer(wx.VERTICAL)
         
-        try:
-            icon_path = r"e:\Python\Lib\py\music_icon.png"
-            icon_bitmap = wx.Bitmap(icon_path, wx.BITMAP_TYPE_PNG)
-            if icon_bitmap.IsOk():
-                icon_image = icon_bitmap.ConvertToImage()
-                icon_image = icon_image.Scale(200, 200, wx.IMAGE_QUALITY_HIGH)
-                icon_bitmap = wx.Bitmap(icon_image)
-                icon_display = wx.StaticBitmap(display_panel, bitmap=icon_bitmap)
-            else:
-                icon_display = wx.StaticText(display_panel, label="[NO IMAGE]")
-                icon_display.SetForegroundColour(wx.Colour(0, 255, 100))  # Light green
-        except Exception as e:
-            print(f"Error loading icon: {e}")
-            icon_display = wx.StaticText(display_panel, label="[NO IMAGE]")
-            icon_display.SetForegroundColour(wx.Colour(0, 255, 100))  # Light green
+        # Create media control for video playback
+        self.video_player = wx.media.MediaCtrl(
+            display_panel, 
+            style=wx.SIMPLE_BORDER
+        )
         
-        display_sizer.Add(icon_display, 1, wx.ALIGN_CENTER | wx.ALL, 20)
+        try:
+            # Load MP4 video file (like animated GIF)
+            video_path = r"e:\Python\Lib\py\animation.mp4"
+            
+            if os.path.exists(video_path):
+                # Check if file exists
+                if self.video_player.Load(video_path):
+                    # Successfully loaded video
+                    # Remove controls (play/pause buttons, slider, etc.)
+                    self.video_player.ShowPlayerControls(0)
+                    
+                    # Start playing
+                    self.video_player.Play()
+                    
+                    # Create timer to loop the video
+                    self.video_timer = wx.Timer(self, wx.ID_ANY)
+                    self.Bind(wx.EVT_TIMER, self.on_video_timer, self.video_timer)
+                    self.video_timer.Start(100)  # Check every 100ms
+                    
+                else:
+                    # Video failed to load
+                    error_text = wx.StaticText(display_panel, label="[VIDEO ERROR]")
+                    error_text.SetForegroundColour(wx.Colour(255, 0, 0))  # Red for error
+                    display_sizer.Add(error_text, 1, wx.ALIGN_CENTER | wx.ALL, 20)
+                    
+            else:
+                # File doesn't exist
+                no_file_text = wx.StaticText(
+                    display_panel, 
+                    label=f"[FILE NOT FOUND]\n{video_path}"
+                )
+                no_file_text.SetForegroundColour(wx.Colour(255, 100, 0))  # Orange warning
+                display_sizer.Add(no_file_text, 1, wx.ALIGN_CENTER | wx.ALL, 20)
+                
+        except Exception as e:
+            # Catch any errors
+            print(f"Error loading video: {e}")
+            error_text = wx.StaticText(display_panel, label=f"[ERROR]\n{str(e)}")
+            error_text.SetForegroundColour(wx.Colour(255, 0, 0))  # Red for error
+            display_sizer.Add(error_text, 1, wx.ALIGN_CENTER | wx.ALL, 20)
+        
+        # Add video player with expansion to fill all available space
+        display_sizer.Add(self.video_player, 1, wx.EXPAND | wx.ALL, 0)
         display_panel.SetSizer(display_sizer)
 
-        # --- Media control (hidden) ---
+        # --- Media control for audio (hidden) ---
         self.mc = wx.media.MediaCtrl(panel, style=wx.SIMPLE_BORDER)
         self.mc.Hide()
 
@@ -144,7 +175,7 @@ class MusicPlayer(wx.Frame):
         # right side
         right_sizer.Add(now_playing_label, 0, wx.ALL, 8)
         right_sizer.Add(self.now_playing, 0, wx.EXPAND | wx.LEFT | wx.RIGHT | wx.BOTTOM, 8)
-        right_sizer.Add(display_panel, 1, wx.EXPAND | wx.LEFT | wx.RIGHT | wx.BOTTOM, 8)
+        right_sizer.Add(display_panel, 1, wx.EXPAND | wx.LEFT | wx.RIGHT | wx.BOTTOM, 0)
         right_sizer.Add(prog_sizer, 0, wx.EXPAND | wx.LEFT | wx.RIGHT, 8)
         right_sizer.Add(btn_sizer, 0, wx.CENTER | wx.ALL, 5)
         right_sizer.Add(vol_sizer, 0, wx.EXPAND | wx.LEFT | wx.RIGHT | wx.BOTTOM, 8)
@@ -154,7 +185,7 @@ class MusicPlayer(wx.Frame):
 
         panel.SetSizer(main_sizer)
 
-        # --- Timer ---
+        # --- Timer for audio ---
         self.timer = wx.Timer(self)
         self.Bind(wx.EVT_TIMER, self.on_timer, self.timer)
 
@@ -221,6 +252,18 @@ class MusicPlayer(wx.Frame):
             setup_slider()
         else:
             wx.MessageBox(f"Unable to load {path}", "Error", wx.OK | wx.ICON_ERROR)
+
+    def on_video_timer(self, event):
+        """Loop video when it finishes - checks every 100ms"""
+        try:
+            # Check if video has stopped (finished playing)
+            if self.video_player.GetState() == wx.media.MEDIASTATE_STOPPED:
+                # Seek to beginning (position 0)
+                self.video_player.Seek(0)
+                # Start playing again
+                self.video_player.Play()
+        except Exception:
+            pass
 
     # -------------- events -------------------
 
@@ -355,4 +398,5 @@ class MusicPlayer(wx.Frame):
 if __name__ == "__main__":
     app = wx.App(False)
     MusicPlayer()
-    app.MainLoop()  
+    app.MainLoop()
+
